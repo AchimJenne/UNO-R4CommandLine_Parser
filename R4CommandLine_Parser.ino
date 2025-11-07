@@ -25,7 +25,7 @@
 enum eCmdSt {eNoToken=0,
       eAUTO, eCD, eCLS, eCONFIG, eCOPY, eDATE, eDEL, eDIR,
       eECHO, eFORMAT, eHELP, eMD, ePATH, eRD, eREN, eTEMP,
-      eTIME, eTYPE, eVER, eVOL};
+      eTIME, eTYPE, eVER, eVOL, eXREC, eXTRAN, eYTRAN}; 
 
 /**************************************************/
 #include <pins_arduino.h>
@@ -40,21 +40,20 @@ enum eCmdSt {eNoToken=0,
 
 // Include the RTC library
 #include "RTC.h"
+#include "FspTimer.h"
+FspTimer timer_ms;
 /**************************************************/
 volatile bool bRTC_Flag = false;
 volatile bool bGPT_Flag = false;
-static uint16_t cntRTC= 0;
-static uint16_t cntGPT= 0;
+
 static bool bLED;
 static bool bGPT;
 char sLogFn[40]= "start.txt";
-char sPath[ILINE]= {"/"};
+char sPath[ILINE]= {""};
 volatile bool bAuto = false;
 bool bRTC = false;
-time_t tiUx= 1760968836;  // SW- Release in UX-Format;
-struct timeval tiV;
 
-RTCTime inRTC(24, Month::OCTOBER, 2025, 10, 00, 00, DayOfWeek::FRIDAY, SaveLight::SAVING_TIME_ACTIVE);
+RTCTime inRTC; // (24, Month::OCTOBER, 2025, 10, 00, 00, DayOfWeek::FRIDAY, SaveLight::SAVING_TIME_ACTIVE);
 int day, mon, year;
 int hour, minute, second;
 static DS1307 EXRTC;
@@ -76,13 +75,24 @@ void setup() {
   //analogReadTemp(3.3f);
 
   Serial.print(S_CLS);
+
   Serial.println(USB_NAME);
   Serial.print(F("CPU- Frequency:   "));
   Serial.print(F_CPU/1000000);
   Serial.println(F(" MHz"));
 
   RTC.begin();    // Initialize the RTC- interface
-  inRTC.setUnixTime(tiUx);
+  struct tm mytm;
+  mytm.tm_year = 2025 -1900;
+  mytm.tm_mon = 11 -1;
+  mytm.tm_mday = 7;
+  sscanf( __TIME__, "%02d:%02d:%02d", &hour, &minute, &second);
+  mytm.tm_hour = hour;
+  mytm.tm_min  = minute;
+  mytm.tm_sec  = second;
+  
+  inRTC.setTM(mytm);
+  // inRTC.setTM(mytm);
   RTC.setTime(inRTC); // Set the initial time 
   if (!RTC.isRunning()) {
       Serial.println("RTC not running");
@@ -90,12 +100,13 @@ void setup() {
   } else {
     Serial.println("RTC OK");
   }
-    Serial.print(F("extRTC "));
+  
+  Serial.print(F("extRTC "));
   bool bRet= EXRTC.begin();
   if (EXRTC.isRunning()) {
     Serial.println(F("OK"));
     EXRTC.setHourMode(CLOCK_H24);
-    syncRTC();
+    synToExtRTC();
     bRTC= true;
   } else {
     Serial.println(F("failed"));
@@ -110,12 +121,12 @@ void setup() {
     Serial.println(F("SD init OK."));
   }
   SD.end();
-  if (beginTimer(100)) {
+  if (beginTimer(10)) {          // 10 Hz = 100 ms timer interrupt
     Serial.println(F("GPT- OK"));
   } else {
     Serial.println(F("GPT- Error"));
   }
-  if (!RTC.setPeriodicCallback(periodicCallback, Period::N256_TIMES_EVERY_SEC)) {
+  if (!RTC.setPeriodicCallback(periodicCallback, Period::N4_TIMES_EVERY_SEC)) {
     Serial.println(F("ERROR: periodic callback is wrong"));
     while (true);
   }

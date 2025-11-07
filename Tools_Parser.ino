@@ -2,7 +2,7 @@
 /**
   * @brief copy external RTC-values into internal RTC
 **/
-void syncRTC()
+void synToExtRTC()
 {
   /* epoch calculation from the time.h  */
   struct tm t;
@@ -25,21 +25,22 @@ void syncRTC()
 **/
 void periodicCallback()
 {
+  static uint16_t cntRTC = 0; // set value once 
   cntRTC++;
-  if ( cntRTC >= 128){
+  if ( cntRTC >= 2){
     cntRTC = 0;
     bRTC_Flag = true;
   }
 }
-#include "FspTimer.h"
-FspTimer timer_ms;
+
 /****************************************************************************/
 /**
   * @brief GPT- Timer callback method 
 **/
 void timer_ms_callback(timer_callback_args_t __attribute((unused)) *p_args) {
+  static uint16_t cntGPT= 0;
   cntGPT++;
-  if (cntGPT >= 50){
+  if (cntGPT >= 5){
     bGPT_Flag = true;
     cntGPT=0;
   }
@@ -69,8 +70,8 @@ bool beginTimer(float rate) {
     } else {
       bReturn = false;
     }
-    return (bReturn);
   } else {
-    return (false);
+    bReturn = false;
   }
+  return (bReturn);
 }

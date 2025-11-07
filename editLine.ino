@@ -10,6 +10,7 @@ bool editLine(char *psLine, char inChar){
   static unsigned char iIndx=0;
   static uint8_t iESC= 0;
   static bool bEditMode= false;
+  if ((inChar != SOH) && (inChar != NAK) && (inChar != ACK)) {
       if (inChar == '\r')       // CR key
       {
         for (unsigned int i=1; i<=(strlen(psLine)-iIndx); i++) {
@@ -127,6 +128,11 @@ bool editLine(char *psLine, char inChar){
           } /* end if */
         } /* end if */
       } /* end if */
-    return (bEditMode);
+  } else {
+    // do not accept XModem token
+    // Serial.println(inChar, HEX);
+    bEditMode = false;
+  }
+  return (bEditMode);
 }
 /**************************************************/
