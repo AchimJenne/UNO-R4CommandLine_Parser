@@ -5,7 +5,7 @@ This software is a helpful basis function set of UNO-R4 and the DS1307-RTC with 
 ![IMG_0578_comp](https://github.com/user-attachments/assets/54898bd9-174e-4ba1-9f40-50ecfe74a7fa)
 An UNO-R4 minima with SD-Card, Battery bufferd RTC, BME680 and 20x4 LCD on I2C- bus
 
-The software supports the CPU internal RTC function and 256ticks/sec callback function for real-time applications. 
+The software supports the CPU internal RTC function and 4ticks/sec callback function for real-time applications. 
 In an equal form there is a 100 Hz GPT- Timer running with own callback.
 
   
@@ -28,6 +28,8 @@ In an equal form there is a 100 Hz GPT- Timer running with own callback.
 **VER** - shows some software informations
 
 **VOL** - list the SD-Card information
+
+**XTRAN** - upload to host
 
 Needed:
 -	external RTC- lib. from Manjunath CV
