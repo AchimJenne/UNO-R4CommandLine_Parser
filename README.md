@@ -13,9 +13,9 @@ In an equal form there is a 100 Hz GPT- Timer running with own callback.
 
 **CONFIG** - shows the SPI- configuration
 
-**COPY** copy a file from => to filename
+**COPY** - copy a file from => to filename
 
-**~~DEL~~** - removing file - function is not implemented
+**DEL** - removing file 
 
 **DIR** - shows the directory
 
