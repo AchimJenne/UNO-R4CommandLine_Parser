@@ -1,7 +1,7 @@
 # UNO-R4CommandLine_Parser
 Arduino UNO-R4: CommandLine_Parser
-A simple ASCII commandline- interface (CLI) with prinary File- functions and comfort. Supports VT100-Terminal emulation (like TeraTerm, PUTTY, GTKTerm and other) on the USB-Port.
-This software is a helpful basis function set of UNO-R4 and the DS1307-RTC with SD-Card enhancements. It's a nice combination for simple applications.
+An example or a simple ASCII commandline- interface (CLI) with prinary File- functions and comfort. Supports VT100-Terminal emulation (like TeraTerm, PUTTY, GTKTerm and other) on the USB-Port.
+This project is a set of helpful functions for the Arduino UNO-R4 with a DS1307-RTC and SD-Card. It's a nice combination for simple applications.
 ![IMG_0578_comp](https://github.com/user-attachments/assets/54898bd9-174e-4ba1-9f40-50ecfe74a7fa)
 An UNO-R4 minima with SD-Card, Battery bufferd RTC, BME680 and 20x4 LCD on I2C- bus
 
@@ -13,7 +13,9 @@ In an equal form there is a 100 Hz GPT- Timer running with own callback.
 
 **CONFIG** - shows the SPI- configuration
 
-**~~DEL~~** - removing file - is not implemented
+**COPY** copy a file from => to filename
+
+**~~DEL~~** - removing file - function is not implemented
 
 **DIR** - shows the directory
 
