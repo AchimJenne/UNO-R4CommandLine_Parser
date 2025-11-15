@@ -12,7 +12,6 @@ void synToExtRTC()
   t.tm_hour = EXRTC.getHours();
   t.tm_min  = EXRTC.getMinutes();
   t.tm_sec  = EXRTC.getSeconds();
-
   RTCTime mytime;
   mytime.setTM(t);
   mytime.setSaveLight(SaveLight::SAVING_TIME_ACTIVE);
@@ -75,3 +74,117 @@ bool beginTimer(float rate) {
   }
   return (bReturn);
 }
+/**************************************************/
+/*! \brief parser main function
+     func_MonParser                                 
+    \param szCmdLn is a pointer of char Cmd-Line
+    \return int value of token; 0: no token found
+    \ingroup token_parser
+    \sa datetime_t */
+/**************************************************/
+int func_MonParser(char *szCmdLn)
+{
+   int iCmdLn;
+   int iCmdPos;
+   int iRet;
+ 
+   iCmdPos= strcspn(szCmdLn," ");
+   if (iCmdPos <= 0) iCmdPos= strlen(szCmdLn);
+ 
+   iCmdLn= strncmp( szCmdLn, "Jul", (iCmdPos>(const size_t)strlen("Jul")? iCmdPos: (const size_t)strlen("Jul")));
+   if (iCmdLn < 0) // is less than Jul
+   {
+      iCmdLn= strncmp( szCmdLn, "Dec", (iCmdPos>(const size_t)strlen("Dec")? iCmdPos: (const size_t)strlen("Dec")));
+      if (iCmdLn < 0) // is less than Dec
+      {
+         if (strncmp( szCmdLn, "Apr", (iCmdPos>(const size_t)strlen("Apr")? iCmdPos: (const size_t)strlen("Apr")))== 0)
+         {
+            iRet= 4;
+         } else { // not Apr
+            if (strncmp( szCmdLn, "Aug", (iCmdPos>(const size_t)strlen("Aug")? iCmdPos: (const size_t)strlen("Aug")))== 0)
+            {
+               iRet= 8;
+            } else { //unknown token
+               iRet= 0;
+            } // End of(2:Aug)
+         } // End of(1:Apr)
+      } else {
+         if (iCmdLn > 0) // is higher than Dec
+         {
+            if (strncmp( szCmdLn, "Feb", (iCmdPos>(const size_t)strlen("Feb")? iCmdPos: (const size_t)strlen("Feb")))== 0)
+            {
+               iRet= 2;
+            } else { // not Feb
+               if (strncmp( szCmdLn, "Jan", (iCmdPos>(const size_t)strlen("Jan")? iCmdPos: (const size_t)strlen("Jan")))== 0)
+               {
+                  iRet= 1;
+               } else { //unknown token
+                  iRet= 0;
+               } // End of(5:Jan)
+            } // End of(4:Feb)
+         } else {
+            if (iCmdLn == 0) // Token Dec found
+            {
+               iRet= 12;
+            } // End of(3:Dec)
+         }
+      }
+   } else {
+      if (iCmdLn > 0) // is higher than Jul
+      {
+         iCmdLn= strncmp( szCmdLn, "Mar", (iCmdPos>(const size_t)strlen("Mar")? iCmdPos: (const size_t)strlen("Mar")));
+         if (iCmdLn < 0) // is less than Mar
+         {
+            if (strncmp( szCmdLn, "Jun", (iCmdPos>(const size_t)strlen("Jun")? iCmdPos: (const size_t)strlen("Jun")))== 0)
+            {
+               iRet= 6;
+            } else { // not Jun
+               if (strncmp( szCmdLn, "Mai", (iCmdPos>(const size_t)strlen("Mai")? iCmdPos: (const size_t)strlen("Mai")))== 0)
+               {
+                  iRet= 5;
+               } else { //unknown token
+                  iRet= 0;
+               } // End of(8:Mai)
+            } // End of(7:Jun)
+         } else {
+            if (iCmdLn > 0) // is higher than Mar
+            {
+               iCmdLn= strncmp( szCmdLn, "Oct", (iCmdPos>(const size_t)strlen("Oct")? iCmdPos: (const size_t)strlen("Oct")));
+               if (iCmdLn == 0)
+               {
+                  iRet= 10;
+               } else { // not Oct
+                  if (iCmdLn < 0)
+                  {
+                     iCmdLn= strncmp( szCmdLn, "Nov", (iCmdPos>(const size_t)strlen("Nov")? iCmdPos: (const size_t)strlen("Nov")));
+                     if (iCmdLn == 0)
+                     {
+                        iRet= 11;
+                     } else { //unknown token
+                        iRet= 0;
+                     }
+                  } else {
+                     if (strncmp( szCmdLn, "Sep", (iCmdPos>(const size_t)strlen("Sep")? iCmdPos: (const size_t)strlen("Sep")))== 0)
+                     {
+                        iRet= 9;
+                     } else { //unknown token
+                        iRet= 0;
+                     } // End of(12:Sep)
+                  } // End of(10:Nov)
+               } // End of(11:Oct)
+            } else {
+               if (iCmdLn == 0) // Token Mar found
+               {
+                  iRet= 3;
+               } // End of(9:Mar)
+            }
+         }
+      } else {
+         if (iCmdLn == 0) // Token Jul found
+         {
+            iRet= 7;
+         } // End of(6:Jul)
+      }
+   }
+   return(iRet);
+} /* end of function func_MonParser */

@@ -1,6 +1,6 @@
 /**************************************************/
-/*! \file PicoCommandLine_Parser.ino
-    \brief Raspberry pico command line interface (CLI)
+/*! \file R4CommandLine_Parser.ino
+    \brief Arduino UNO-R4 command line interface (CLI)
     \defgroup command line parser
     \author Achim Jenne 25.10.2025
     \sa This code is "AS IS" without warranty or liability. 
@@ -49,7 +49,7 @@ volatile bool bGPT_Flag = false;
 static bool bLED;
 static bool bGPT;
 char sLogFn[40]= "start.txt";
-char sPath[ILINE]= {""};
+char sPath[ILINE]= {"/"};
 volatile bool bAuto = false;
 bool bRTC = false;
 
@@ -75,24 +75,24 @@ void setup() {
   //analogReadTemp(3.3f);
 
   Serial.print(S_CLS);
-
   Serial.println(USB_NAME);
   Serial.print(F("CPU- Frequency:   "));
   Serial.print(F_CPU/1000000);
   Serial.println(F(" MHz"));
 
-  RTC.begin();    // Initialize the RTC- interface
+  RTC.begin();    // Initialize the RTC from SW- build date
   struct tm mytm;
-  mytm.tm_year = 2025 -1900;
-  mytm.tm_mon = 11 -1;
-  mytm.tm_mday = 7;
+  char sMon[5];
+  sscanf( __DATE__, "%3s %2d %4d", &sMon, &day, &year);
+  mytm.tm_year = year -1900;
+  mytm.tm_mon = func_MonParser(&sMon[0]) -1;
+  mytm.tm_mday = day;
   sscanf( __TIME__, "%02d:%02d:%02d", &hour, &minute, &second);
   mytm.tm_hour = hour;
   mytm.tm_min  = minute;
   mytm.tm_sec  = second;
-  
   inRTC.setTM(mytm);
-  // inRTC.setTM(mytm);
+
   RTC.setTime(inRTC); // Set the initial time 
   if (!RTC.isRunning()) {
       Serial.println("RTC not running");
@@ -113,7 +113,6 @@ void setup() {
     bRTC= false;
   }
 
-  //SPI.beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
   if (!SD.begin(SDCRD)) {
     Serial.println(F("SD initialization failed."));
     while (true);

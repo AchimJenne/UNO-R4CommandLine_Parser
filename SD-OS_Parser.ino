@@ -72,20 +72,24 @@ int fnc_COPY(const char* szCmdLn)
   File FH1, FH2;
   char sFnTo[ILINE];
   char sFnFrom[ILINE];
-  char s1[40], s2[40];
-  #define IBUFFER 64
+  char *psFnTo= &sFnTo[0];
+  char s1[ILINE], s2[ILINE];
+  #define IBUFFER 256
   char cBuff[IBUFFER];
 
   szCmdLn++;
   int iRet= sscanf(szCmdLn,"%s %s", &s1, &s2);
   if (iRet ==2) {
-    strcpy(sFnFrom, sPath);
-    strcat(sFnFrom, "/");
-    strcat(sFnFrom, s1);
-    strcpy(sFnTo, sPath);
-    strcat(sFnTo, "/");
-    strcat(sFnTo, s2);
-
+    argPathFn( &s1[0], &sFnFrom[0]);
+    if (strncmp(s2, ".", 1) ==0) {
+      strncpy(psFnTo, sPath, ILINE);
+      strncat(psFnTo, "/", ILINE);
+      strncat(psFnTo, (strrchr(s1, '/')+1), ILINE);
+      Serial.println();  
+      Serial.println(psFnTo);
+    } else {
+      argPathFn( &s2[0], &sFnTo[0]);
+    }
     if (SD.begin( SDCRD))  {
       digitalWrite(LED_BUILTIN, 1);
       FH1 = SD.open(sFnFrom, FILE_READ);
@@ -98,7 +102,7 @@ int fnc_COPY(const char* szCmdLn)
           } 
           Serial.print(F(" OK"));
         } else {
-          Serial.print(F(" no Dest."));
+          Serial.print(F(" no Desti."));
         }
         FH2.close();
         FH1.close();
@@ -331,7 +335,7 @@ int fnc_HELP(const char* szCmdLn)
   Serial.println(F("CLS\t clearscreen"));
   Serial.println(F("CONFIG\t display configuration"));
   Serial.println(F("COPY\t copy file; <src> <targ>"));
-  Serial.println(F("DATE\t display/set date"));
+  Serial.println(F("DATE\t display/set date; format <DD.MM.YYYY>"));
   Serial.println(F("DEL\t delete file"));
   Serial.println(F("DIR\t display directory"));
   Serial.println(F("ECHO\t copy argument into logfile"));
@@ -342,7 +346,7 @@ int fnc_HELP(const char* szCmdLn)
   Serial.println(F("CD\t change directory"));
   Serial.println(F("MD\t make directory"));
   Serial.println(F("RD\t remove directory"));
-  Serial.println(F("TIME\t display/set time"));
+  Serial.println(F("TIME\t display/set time; format <hh.mm.ss>"));
   Serial.println(F("TEMP\t display temperature(s)"));
   Serial.println(F("TYPE\t display ASCII-file"));
   Serial.println(F("VER\t display SW- Version"));

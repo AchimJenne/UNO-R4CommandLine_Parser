@@ -7,8 +7,8 @@
 #define SDOS_R4
 
 //XModem
-#define SOH  0x01 // 128 byte
-#define STX  0x02 // 1024 byte
+#define SOH  0x01 // 128 byte X-Modem
+#define STX  0x02 // 1024 byte X-Modem
 #define EOT  0x04
 #define ACK  0x06
 #define NAK  0x15
@@ -23,9 +23,6 @@
 #define S_CLS F("\e[0H\e[2J")
 #define S_CR  F("\r\n>")
 #define ILINE 80
-
-// bool beginTimer(float);
-// bool editLine(char *, char );
 
 //#define SDCRD SPI_FULL_SPEED,PIN_SPI_CS
 #define SDCRD PIN_SPI_CS
