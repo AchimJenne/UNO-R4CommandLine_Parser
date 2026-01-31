@@ -38,11 +38,22 @@ void periodicCallback()
 **/
 void timer_ms_callback(timer_callback_args_t __attribute((unused)) *p_args) {
   static uint16_t cntGPT= 0;
+  static int iAvrgCnt=0;
+  static int iADC[10][NADC];
   cntGPT++;
   if (cntGPT >= 5){
     bGPT_Flag = true;
     cntGPT=0;
-  }
+  } /* end if */
+
+  for (int8_t iLADC=0; iLADC<NADC; iLADC++){
+    iADC[iAvrgCnt][iLADC]= analogRead(PIN_A0 + iLADC);
+    uADC[iLADC] = 0;
+    for (int8_t iLAVRG=0; iLAVRG<=9; iLAVRG++){
+      uADC[iLADC] += iADC[iLAVRG][iLADC];
+    } /* end for */
+  } /* end for */
+  iAvrgCnt= (iAvrgCnt++)%10;
 }
 /****************************************************************************/
 /**
@@ -54,7 +65,7 @@ bool beginTimer(float rate) {
   int8_t tindex = FspTimer::get_available_timer(timer_type);
   if (tindex < 0){
     tindex = FspTimer::get_available_timer(timer_type, true);
-  }
+  } /* end if */
   if (tindex >= 0) {
     FspTimer::force_use_of_pwm_reserved_timer();
     if (timer_ms.begin(TIMER_MODE_PERIODIC, timer_type, tindex, rate, 0.0f, timer_ms_callback)) 
@@ -63,15 +74,15 @@ bool beginTimer(float rate) {
         if (timer_ms.open()) {
           if (timer_ms.start()) {
             bReturn = true;
-          }
-        }
-      }
+          } /* end if */
+        } /* end if */
+      }/* end if */
     } else {
       bReturn = false;
-    }
+    } /* end if */
   } else {
     bReturn = false;
-  }
+  } /* end if */
   return (bReturn);
 }
 /**************************************************/

@@ -8,8 +8,8 @@ bool editLine(char *psLine, char inChar)
 {
   static char sBack[ILINE];
   char sTemp[ILINE];
-  static unsigned char iIndx=0;
-  static uint8_t iESC= 0, iL2C=0;
+  static unsigned char iIndx= 0;
+  static uint8_t iESC= 0, iL2C= 0;
   static bool bEditMode= false;
   if ((inChar != SOH) && (inChar != NAK) && (inChar != ACK)) {
       if (inChar == '\r')       // CR key
@@ -60,14 +60,22 @@ bool editLine(char *psLine, char inChar)
           }
           iESC= 0;
         } else
+        if ((inChar == '1') && (iESC ==2)) {
+          iL2C= 1;
+          iESC= 3;
+        } else
         if ((inChar == '4') && (iESC ==2)) {
           iL2C= 4;
           iESC= 3;
         } else 
-        if ((inChar == '1') && (iESC ==2)) {
-          iL2C= 1;
+        if ((inChar == '5') && (iESC ==2)) {
+          iL2C= 5;
           iESC= 3;
         } else 
+        if ((inChar == '6') && (iESC ==2)) {
+          iL2C= 6;
+          iESC= 3;
+        } else
         if ((inChar == '~') && (iESC ==3)) {  
           if ((iL2C ==1)){
             Serial.print(F("\e["));
@@ -83,14 +91,25 @@ bool editLine(char *psLine, char inChar)
             Serial.print(psLine);
             iIndx= strlen(psLine);          
             iESC= 0;
-          }
+          } else
+          if ((iL2C ==5)){
+            Serial.print(F("\e["));
+            Serial.print(PGROL);
+            Serial.print(F("A"));
+            iESC= 0;
+          } else
+          if ((iL2C ==6)){
+            Serial.print(F("\e["));
+            Serial.print(PGROL);
+            Serial.print(F("B"));
+            iESC= 0;
+          }          
         } else
         if ((iESC >=2)) { // unknown key 
           Serial.println();
           Serial.print(inChar);
           Serial.print(" ");
           Serial.println(inChar, HEX);
-          iESC= 0;
         } else
         if ((inChar == C_BS)&&(iESC ==0)) { // backpace key 
           if (strlen(psLine) >= 1) {
@@ -160,10 +179,9 @@ bool editLine(char *psLine, char inChar)
         }
       }
     } else {
-    // do not accept XModem token
-    // Serial.println(inChar, HEX);
-    bEditMode = false;
-  }
+      // do not accept XModem token
+      bEditMode= false;
+    }
   return (bEditMode);
 }
 /**************************************************/
