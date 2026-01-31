@@ -8,6 +8,7 @@ An UNO-R4 minima with SD-Card, Battery bufferd RTC, BME680 and 20x4 LCD on I2C- 
 The software supports the CPU internal RTC function and 4ticks/sec callback function for real-time applications. 
 In an equal form there is a 100 Hz GPT- Timer running with own callback.
 
+The X/Y-Modem Filetransfer is helpful if you want to exchange file on a running System - whenever you can't remove the SD-Card. In my case, the host-software can handle the files via remote control. The X/Y-Modem transfer performance is not high, but 25-60 kBytes/s is OK for my Application.
   
 **CD**, **MD**, **RD** - directory handling
 
@@ -31,7 +32,11 @@ In an equal form there is a 100 Hz GPT- Timer running with own callback.
 
 **VOL** - list the SD-Card information
 
-**XTRAN** - upload to host
+**XTRAN** - file transfer from RasPi to host via XMODEM protocol (supports XModem 128Byte/ChkSum and 1K/CRC)
+
+**XREC** - file transfer from host to RasPi via XMODEM protocol (supports XModem 128Byte/ChkSum and 1K/CRC)
+
+**YREC** - file transfer from host to RasPi via YMODEM protocol (helpful to save many files on RasPi)
 
 Needed:
 -	external RTC- lib. from Manjunath CV
