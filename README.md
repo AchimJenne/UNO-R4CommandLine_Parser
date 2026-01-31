@@ -36,7 +36,7 @@ The X/Y-Modem Filetransfer is helpful if you want to exchange file on a running 
 
 **XREC** - file transfer from host to RasPi via XMODEM protocol (supports XModem 128Byte/ChkSum and 1K/CRC)
 
-**YREC** - file transfer from host to RasPi via YMODEM protocol (helpful to save many files on RasPi)
+**YREC** - file transfer from host to RasPi via YMODEM protocol (helpful to save many files on R4-system)
 
 Needed:
 -	external RTC- lib. from Manjunath CV
