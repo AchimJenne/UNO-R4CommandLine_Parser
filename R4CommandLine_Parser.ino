@@ -10,10 +10,10 @@
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.. 
+    This program is distributed WITHOUT ANY WARRANTY; 
+    without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+    See the GNU General Public License for more details.
     */
 /**************************************************/
 
@@ -81,7 +81,7 @@ void setup() {
   Serial1.flush();
   Serial1.print(S_CLS);
   Serial1.println(USB_NAME);
-  Serial1.println("Debug Port");
+  Serial1.println("Debug Port\n>");
 #endif
 
   Serial.print(S_CLS);
@@ -139,6 +139,9 @@ void setup() {
   } else {
     Serial.println(F("GPT- Error"));
   }
+   // set date time callback function
+  SdFile::dateTimeCallback(setFATDdatetime);
+  
   if (!RTC.setPeriodicCallback(periodicCallback, Period::N4_TIMES_EVERY_SEC)) {
     Serial.println(F("ERROR: periodic callback is wrong"));
     while (true);
@@ -170,6 +173,11 @@ void loop() {
       Serial.print(F("\r\n"));
       Serial.print(sPath);
       Serial.print(F(">"));
+#ifdef DEBUG
+        Serial1.println();
+        Serial1.print(sPath);
+        Serial1.print(F(">"));
+#endif       
     } /* end if */
   } else {
     if (bRTC_Flag) {
@@ -196,7 +204,7 @@ void loop() {
         } /* end for */
         Serial.print(F("\r\n"));
         Serial.print(sPath);
-        Serial.print(F(">"));
+        Serial.print(F(">"));      
       }
       bGPT_Flag= false;
     } /* end if */

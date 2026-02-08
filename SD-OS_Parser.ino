@@ -75,7 +75,7 @@ int fnc_COPY(const char* szCmdLn)
   char sFnFrom[ILINE];
   char *psFnTo= &sFnTo[0];
   char s1[ILINE], s2[ILINE];
-  #define IBUFFER 256
+  #define IBUFFER 1024
   char cBuff[IBUFFER];
 
   szCmdLn++;
@@ -177,7 +177,7 @@ int fnc_DATE(const char* szCmdLn)
   } else {
     Serial.print(F(" : "));
     Serial.print(F(" CPU: "));
-    RTC.getTime(inRTC);
+    // RTC.getTime(inRTC);
     time_t tiUx= inRTC.getUnixTime();
     strftime(sLine, sizeof(sLine), "(%A) %0d.%0m.20%0y", localtime(&tiUx));
     Serial.print(sLine);
@@ -353,6 +353,7 @@ int fnc_HELP(const char* szCmdLn)
   Serial.println(F("VOL\t display SD-Card informations"));
   Serial.println(F("XREC\t XModem- download to uC"));
   Serial.println(F("XTRAN\t XModem- upload"));
+  Serial.println(F("YREC\t YModem- download to uC (1kB and CRC)"));
   return( eHELP );
 }  /* end of fnc_HELP */
  
@@ -535,8 +536,9 @@ int fnc_TYPE(const char* szCmdLn)
   int16_t iBufLen;
   unsigned char ucBuffer[BUFLEN];
 
-  Serial.print(F(" : "));
-  
+  argPathFn( szCmdLn, &sLine[0]);
+
+  Serial.print(F("\r\n"));
   digitalWrite(LED_BUILTIN, 1);
   if (SD.begin(SDCRD)) {
     File FH1 = SD.open(sLine, FILE_READ);
@@ -552,10 +554,10 @@ int fnc_TYPE(const char* szCmdLn)
     } else {
       Serial.print(sLine);
       Serial.println(F(" not found!"));
-    } 
+    } /* end if */ 
     SD.end();
     digitalWrite(LED_BUILTIN, 0);
-  }
+  } /* end if */
    return( eTYPE );
 }  /* end of fnc_TYPE */
  
@@ -635,11 +637,11 @@ int fnc_VOL(const char* szCmdLn)
         Serial.print(F("Volume size (Mb):  "));
         volumesize /= 1024; 
         Serial.println(volumesize);
-      }
-    }
+      } /* end if */
+    } /* end if */
     SD.end();
     digitalWrite(LED_BUILTIN, 0);
-  }
+  } /* end if */
   return( eVOL );
 }  /* end of fnc_VOL */
  
@@ -649,6 +651,12 @@ int fnc_VOL(const char* szCmdLn)
     \return int- value of token
     \ingroup token_parser */
 /**************************************************/
+#define XENTRY 0
+#define XBLKNUM 1
+#define XBLKNUMI 2
+#define XDATABLK 3
+#define XCHKCRC 4
+#define XCHKEOT 5
 int fnc_XREC(const char* szCmdLn)
 {
   /* place your code here */
@@ -672,120 +680,109 @@ int fnc_XREC(const char* szCmdLn)
     iRecState = 0;
     Serial.flush();
     while (!bRecEnd) {
-      if (iRecState == 0) {
+      if (iRecState == XENTRY) {
         Serial.write(NAK);
         iStrtTi= millis()+Y_TIOUT;
         while ( (!Serial.available()) && (millis() < iStrtTi) ) { }
         if ((Serial.readBytes(&inChar,1)==1) &&(millis()<iStrtTi)) {
           if (SD.exists(sLine)){
             SD.remove(sLine);
-          }
+          } /* end if */
           FH1 = SD.open(sLine, FILE_WRITE);
           if ( (inChar== STX) && (millis()<iStrtTi) ) {
             iBlkSize= Y_BSIZE;
-            iRecState = 1; // found Header token 
+            iRecState = XBLKNUM; // found Header token 
           } else 
           if ( (inChar== SOH) && (millis()<iStrtTi) ) {
             iBlkSize= X_BSIZE;
-            iRecState = 1; // found Header token 
+            iRecState = XBLKNUM; // found Header token 
           } else 
           if ( (inChar== EOT)&&(millis()<iStrtTi) ) {
             Serial.write((uint8_t)NAK); // end of transmision
           } else {
+            bRecEnd= true;
           } /* end if */
         } else
         if ((iBlkCnt < 5)&&(millis()>=iStrtTi) ) {
           iBlkCnt++;
         } else {
-          for (int iL= 1; iL<3; iL++){
-            Serial.write((uint8_t)CAN);
-          } /* end if */
           bRecEnd= true;
         } /* end if */
       } else 
-      if (iRecState == 1) { 
+      if (iRecState == XBLKNUM) { 
         iStrtTi= millis()+Y_TIOUT;
         while ( (!Serial.available()) && (millis() < iStrtTi) ) { }
-        if ((Serial.readBytes(&inChar,1)==1) &&(millis()<iStrtTi)){
+        if ((Serial.readBytes(&inChar,1)==1) &&(millis()<iStrtTi)) {
           iBlkCnt= inChar;
-          iRecState = 2;
+          iRecState = XBLKNUMI;
         } else {
-          for (int iL= 1; iL<3; iL++){
-            Serial.write((uint8_t)CAN);
-          }
           bRecEnd= true;
         } /* end if */
       } else 
-      if (iRecState == 2) {  // inverse block counter - not used!
+      if (iRecState == XBLKNUMI) {  // inverse block counter - not used!
         iStrtTi= millis()+Y_TIOUT;
         while ( (!Serial.available()) && (millis() < iStrtTi) ) { }
-        if ((Serial.readBytes(&inChar,1)==1) &&(millis()<iStrtTi)){
-          iBlkCnt= inChar;
-          iRecState = 3;
+        if ((Serial.readBytes(&inChar,1)==1) &&(millis()<iStrtTi)) {
+          // iBlkCnt= inChar;
+          iRecState = XDATABLK;
         } else {
-          for (int iL= 1; iL<3; iL++){
-            Serial.write((uint8_t)CAN);
-          }
           bRecEnd= true;
         } /* end if */
       } else
-      if (iRecState == 3) { 
+      if (iRecState == XDATABLK) { 
         iStrtTi= millis()+Y_TIOUT;
         while((Serial.readBytes(&ucBuffer[0],iBlkSize)<iBlkSize)&&(millis()<iStrtTi) ) { }  
         if (millis()<iStrtTi) {
           iByteCnt= iByteCnt + iBlkSize;
           FH1.write(&ucBuffer[0], iBlkSize);
-          iRecState = 4;
+          iRecState = XCHKCRC;
         } else {
-          for (int iL= 1; iL<3; iL++){
-            Serial.write((uint8_t)CAN);
-          }
           bRecEnd= true;
         } /* end if */
       } else
-      if (iRecState == 4) { 
+      if (iRecState == XCHKCRC) { 
         iStrtTi= millis()+Y_TIOUT;
-        while ( (!Serial.available()) && (millis() < iStrtTi) ) { }
-        if ((Serial.readBytes(&inChar,1)==1) &&(millis()<iStrtTi)){
-          if ( millis()<iStrtTi ) {
-            Serial.write((uint8_t)ACK);
-            iRecState = 5; // found Header token 
-          }  /* end if */
+        while ( (Serial.readBytes(&inChar,1)<1) && (millis() < iStrtTi) ) { }
+        if (millis()<iStrtTi) {
+          Serial.write((uint8_t)ACK);
+          iRecState = XCHKEOT; // found Header token 
         } else {
-          for (int iL= 1; iL<3; iL++){
-            Serial.write((uint8_t)CAN);
-          }
           bRecEnd= true;
         } /* end if */
       } /* end if */
-      if (iRecState == 5) { 
+      if (iRecState == XCHKEOT) { 
         iStrtTi= millis()+Y_TIOUT;
-        while ( (Serial.readBytes(&inChar,1) ==0) && (millis() < iStrtTi) ) { }
-        if ((inChar== STX) && (millis()<iStrtTi)) {
-          iBlkSize= Y_BSIZE;
-          iRecState = 1; // found Header token for next data block
-        } else
-        if ((inChar== SOH) && (millis()<iStrtTi)) {
-          iBlkSize= X_BSIZE;
-          iRecState = 1; // found Header token for next data block
-        } else
-        if ((inChar== EOT) && (millis()<iStrtTi)) {
-          Serial.write((uint8_t)ACK);
-          bRecEnd= true;
-        } else {
-          for (int iL= 1; iL<3; iL++){
-            Serial.write((uint8_t)CAN);
-          }
-          bRecEnd= true;
+        while ( (!Serial.available()) && (millis() < iStrtTi) ) { }
+        if ((Serial.readBytes(&inChar,1)==1) &&(millis()<iStrtTi)) {
+          if ((inChar== STX) && (millis()<iStrtTi)) {
+            iBlkSize  = Y_BSIZE;
+            iRecState = XBLKNUM; // found token for next data block
+          } else
+          if ((inChar== SOH) && (millis()<iStrtTi)) {
+            iBlkSize  = X_BSIZE;
+            iRecState = XBLKNUM; // found token for next data block
+          } else
+          if ((inChar== EOT) && (millis()<iStrtTi)) {
+            Serial.write((uint8_t)ACK);
+            bRecEnd   = true;
+          } else {
+            for (int iL= 1; iL<3; iL++){
+              Serial.write((uint8_t)CAN);
+            }
+            bRecEnd= true;
+          } /* end if */
         } /* end if */
       } /* end if */
     } /* end while */
-    if (iRecState == 5) {
+    if (iRecState== XCHKEOT) {
       FH1.close();
       Serial.print("\nByte Cnt ");
       Serial.print(iByteCnt);
       Serial.println("\nDone");
     } else {
+      for (int iL= 1; iL<3; iL++){
+        Serial.write((uint8_t)CAN);
+      }
       Serial.print("\nstoped at state ");
       Serial.print(iRecState);
       Serial.print("\nBlock Cnt ");
@@ -815,7 +812,7 @@ int fnc_XTRAN(const char* szCmdLn)
   uint16_t iCSum, iCrc;
   uint16_t iBlkCnt = 1;
   uint8_t iReTr = 0; 
-  bool bTiOut= false;
+  bool bTiOut = false;
   bool bTrans = false;
   bool bCrc = true;
   char inChar;       
@@ -836,7 +833,6 @@ int fnc_XTRAN(const char* szCmdLn)
         while ((FH1.available()!=0)&&(!bTiOut)) {
           while ((Serial.readBytes(&inChar,1)==0) && (millis()<(iStrtTi+ (X_TIMEOUT*12)))) {  } 
           if (millis()>=(iStrtTi+(X_TIMEOUT*12))){
-            Serial.print("\nTimeout");
             for (int iL= 1; iL<3; iL++){
               Serial.write((uint8_t) CAN);
             } /* end for */
@@ -903,6 +899,7 @@ int fnc_XTRAN(const char* szCmdLn)
             for (int iL= 1; iL<3; iL++){
               Serial.write((uint8_t) CAN);
             }
+            bTiOut= true;
           } /* end if */
         } /* end while */ 
         Serial.write((uint8_t) EOT);
@@ -914,9 +911,15 @@ int fnc_XTRAN(const char* szCmdLn)
         Serial.print(sLine);
         Serial.println(F(" not found!"));
       } 
-      if (!bTiOut) Serial.println(F(" done!"));
+      if (!bTiOut){
+        Serial.println(F("\ndone!"));
+      } else {
+        Serial.println(F("\nTimeout!"));
+      } /* end if */
       SD.end();
       digitalWrite(PIN_LED,0);
+    } else {
+      Serial.println("\nno SD-Card!");
     }
   } else {
     Serial.println(" no argument!");
@@ -930,15 +933,23 @@ int fnc_XTRAN(const char* szCmdLn)
     \return int- value of token
     \ingroup token_parser */
 /**************************************************/
+#define YENTRY 0
+#define YBLKNUM 1
+#define YBLKNUMI 2
+#define YDATABLK 3
+#define YFNAMBLK 31
+#define YCHKCRC 4
+#define YCHKEOT 5
+
 int fnc_YREC(const char* szCmdLn)
 {
   /* place your code here */
-  char sLine[ILINE] = {"xxxxx.yyy"};
+  char sLine[ILINE] = {0x00};
   int32_t iByteCnt = 0, iByteSum = 0, iBlkCnt;
   int16_t iRecState;   // Receiver statemachine
   uint8_t iChkSum;
-  //bool bTiOut= false;
   bool bRecEnd=false;
+  bool bFNBlk=false;
   unsigned char inChar;
   int16_t iBlkSize;
   unsigned char ucBuffer[Y_BSIZE];
@@ -947,181 +958,202 @@ int fnc_YREC(const char* szCmdLn)
   
   Serial.print(" : ");
   iBlkCnt = 0;
-  iRecState = 0;
+  iRecState = YENTRY;
   if (SD.begin(SDCRD)) {
-  digitalWrite(PIN_LED,1);
-  Serial.flush();
-  while (!bRecEnd) {
-    if (iRecState == 0) {
-      // Serial.setTimeout(Y_TIOUT);
-      Serial.write("C");    // "C" request for 1kB/CRC transmission 
-      iStrtTi= millis()+3000; 
-      while ( (!Serial.available()) && (millis() < iStrtTi) ) { }
-      if ((Serial.readBytes(&inChar,1)==1) &&(millis()<iStrtTi)) {
-        if ( (inChar== STX) && (millis()<iStrtTi) ) {
-          iBlkSize= Y_BSIZE;
-          iRecState = 1; // found Header token 
-        } else 
-        if ( (inChar== SOH) && (millis()<iStrtTi) ) {
-          iBlkSize= X_BSIZE;
-          iRecState = 1; // found Header token 
-        } else 
-        if ( (inChar== EOT)&&(millis()<iStrtTi) ) {
-          Serial.write((uint8_t)NAK); // end of transmision
-          delay (20);
-          Serial.write((uint8_t)ACK);
-          iRecState = 901;
-        } else {
-        } /* end if */
-      } else
-      if ((iBlkCnt < 5)&&(millis()>=iStrtTi) ) {
-        iBlkCnt++;
-      } else {
-        iRecState = 90;
-      } /* end if */
-    } else 
-    if (iRecState == 1) { 
-      iStrtTi= millis()+Y_TIOUT;
-      while ( (!Serial.available()) && (millis() < iStrtTi) ) { }
-      if ((Serial.readBytes(&inChar,1)==1) &&(millis()<iStrtTi)){
-          iBlkCnt= inChar;
-          iRecState = 2;
-      } else {
-        iRecState =91;
-      } /* end if */
-    } else 
-    if (iRecState == 2) {  // inverse block counter - not used!
-      iStrtTi= millis()+Y_TIOUT;
-      while ( (!Serial.available()) && (millis() < iStrtTi) ) { }
-      if ((Serial.readBytes(&inChar,1)==1) &&(millis()<iStrtTi)){
-        if ((iBlkCnt==1)&&(iByteCnt==0)){   // if first datablock 
-          if (SD.exists(sLine)){
-            SD.remove(sLine);
-          } /* end if */
-          FH1 = SD.open(sLine, (O_WRITE|O_CREAT)); // create file
-          if (FH1 !=0) {
-            iRecState= 3;
+    digitalWrite(PIN_LED,1);
+    Serial.flush();
+    while (!bRecEnd) {
+      if (iRecState == YENTRY) {
+        Serial.write("C");    // "C" request for 1kB/CRC transmission 
+        iStrtTi= millis() + 3000; 
+        while ( (!Serial.available()) && (millis() < iStrtTi) ) { }
+        if ((Serial.readBytes(&inChar,1)==1) &&(millis()<iStrtTi)) {
+          if ( (inChar== STX) && (millis()<iStrtTi) ) {
+            iBlkSize= Y_BSIZE;
+            iRecState = YBLKNUM; // found Header token 
+          } else 
+          if ( (inChar== SOH) && (millis()<iStrtTi) ) {
+            iBlkSize= X_BSIZE;
+            bFNBlk = true;
+            iRecState = YBLKNUM; // found Header token 
+          } else 
+          if ( (inChar== EOT)&&(millis()<iStrtTi) ) {
+            Serial.write((uint8_t)NAK); // end of transmision
+            delay (10);
+            Serial.write((uint8_t)ACK);
+            iRecState = 901;
+            bRecEnd = true;
           } else {
-            iRecState=921;
           } /* end if */
         } else
-        if ((iBlkCnt==0)&&(iByteCnt==0)){
-          iRecState = 31;  // Filename in first block 
+        if ((iBlkCnt < 5)&&(millis()>=iStrtTi) ) {
+          iBlkCnt++;
         } else {
-          iRecState =3;
+          iRecState = 90;
         } /* end if */
-      } else {
-        iRecState =92;
-      } /* end if */
-    } else
-    if (iRecState == 31) { // YMODEM Filename block
-      iBlkSize = X_BSIZE;
-      iStrtTi= millis()+Y_TIOUT;
-      while((Serial.readBytes(&ucBuffer[0],iBlkSize)<iBlkSize)&&(millis()<iStrtTi) ) { }  
-      if (millis()<iStrtTi) {
-        if (strlen((char*)ucBuffer)>=1) {
-          argPathFn( (char*)ucBuffer, &sLine[0]);
-          iRecState = 4;
+      } else 
+      if (iRecState == YBLKNUM) { 
+        iStrtTi= millis()+Y_TIOUT;
+        while ( (!Serial.available()) && (millis() < iStrtTi) ) { }
+        if ((Serial.readBytes(&inChar,1)==1) &&(millis()<iStrtTi)){
+          iBlkCnt= inChar;
+          iRecState = YBLKNUMI;
         } else {
-          iByteSum = iByteSum + iByteCnt;
-          iByteCnt = 0;
-          iRecState = 5;
-          bRecEnd= true;
-        }
-      } else {
-        iRecState =931;
-      } /* end if */
-    } else
-    if (iRecState == 3) { 
-      iStrtTi= millis()+Y_TIOUT;
-      while((Serial.readBytes(&ucBuffer[0],iBlkSize)<iBlkSize)&&(millis()<iStrtTi) ) { }  
-      if (millis()<iStrtTi) {
-        iByteCnt= iByteCnt + iBlkSize;
-        iRecState = 4;
-      } else {
-        iRecState = 93;
-      } /* end if */
-    } else
-    if (iRecState == 4) { 
-      iStrtTi= millis()+Y_TIOUT;
-      unsigned char cCrc[2];
-      while ( (!Serial.available()) && (millis() < iStrtTi) ) { }
-      if ((Serial.readBytes(&cCrc[0], 2)==2) &&(millis()<iStrtTi)){
-
-        uint16_t iMyCRC =0;
-        for (int iL=0; iL < iBlkSize; iL++){
-          iMyCRC= uicalcCrc(ucBuffer[iL],iMyCRC);
-        } /* end for */
-        uint16_t iCRC = (cCrc[0]<<8) + cCrc[1]; // big endian
-
-        if ( millis()<iStrtTi ) {
-          Serial.write((uint8_t)ACK);
-          if ((iBlkCnt==0)&&(iByteCnt==0)) {
-            Serial.write("C");  // YModem: reopen connection after Filename
-            // iByteSum = iByteSum + iByteCnt;
-            // iByteCnt = 0;
+          iRecState =91;
+        } /* end if */
+      } else 
+      if (iRecState == YBLKNUMI) {  // inverse block counter
+        iStrtTi= millis()+Y_TIOUT;
+        while ( (!Serial.available()) && (millis() < iStrtTi) ) { }
+        if ((Serial.readBytes(&inChar,1)==1) &&(millis()<iStrtTi)){
+          if ((iBlkCnt==0)&&(iByteCnt==0)){
+            iRecState = YFNAMBLK;  // Filename in first block 
           } else {
-            FH1.write(ucBuffer,iBlkSize);
+            iRecState = YDATABLK;
           } /* end if */
-          iRecState = 5; // found Header token 
-        }  /* end if */
-      } else {
-        iRecState =94;
-      } /* end if */
-    } else
-    if (iRecState == 5) { 
-      iStrtTi= millis()+Y_TIOUT;
-      while ( (Serial.readBytes(&inChar,1) ==0) && (millis() < iStrtTi) ) { }
-      if ((inChar== STX) && (millis()<iStrtTi)) {
-        iBlkSize= Y_BSIZE;
-        iRecState = 1; // found Header token for next data block
-      } else
-      if ((inChar== SOH) && (millis()<iStrtTi)) {
-        iBlkSize= X_BSIZE;
-        iRecState = 1; // found Header token for next data block
-      } else
-      if ((inChar== EOT) && (millis()<iStrtTi)) {
-        FH1.close();
-        Serial.write((uint8_t)NAK);
-        delay(10);
-        Serial.write((uint8_t)ACK);
-        delay(10);
-        Serial.write("C");
-        Serial.flush();
-        iStrtTi= millis()+100;
-        while ( (Serial.readBytes(&inChar,1) ==0) && (millis() < iStrtTi) ) { }
-        if ((inChar== SOH) && (millis()<iStrtTi)) {
-          iByteSum = iByteSum + iByteCnt;
-          iByteCnt= 0;
-          iBlkCnt = 0;
-          iRecState= 1;  // next file
         } else {
-          bRecEnd= true;
-        }
-      } else {
-        iRecState =95;
+        iRecState = 92;
+        } /* end if */
+      } else
+      if (iRecState == YDATABLK) { 
+        iStrtTi= millis()+Y_TIOUT;
+        while((Serial.readBytes(&ucBuffer[0], iBlkSize) < iBlkSize) && (millis()<iStrtTi) ) { }  
+        if (millis()<iStrtTi) {
+          iRecState = YCHKCRC;
+        } else {
+          iRecState = 93;
+        } /* end if */
+      } else
+      if (iRecState == YFNAMBLK) { // YMODEM Filename block
+        // iBlkSize= X_BSIZE;
+        iStrtTi = millis()+Y_TIOUT;
+        while((Serial.readBytes(&ucBuffer[0], iBlkSize) < iBlkSize)&&(millis()<iStrtTi) ) { }  
+        if (millis()<iStrtTi) {
+          if (strlen((char*)ucBuffer)>=1) {
+            argPathFn( (char*)ucBuffer, &sLine[0]);
+            bFNBlk= true;
+          } else { // no filename found
+            strcpy(&sLine[0], (char*)ucBuffer);
+          } /* end if */
+          iRecState = YCHKCRC;
+        } else {
+          iRecState  = 931;
+        } /* end if */
+      } else
+      if (iRecState == YCHKCRC) { 
+        iStrtTi= millis()+Y_TIOUT;
+        unsigned char cCrc[2];
+        while ( (!Serial.available()) && (millis() < iStrtTi) ) { }
+        if ((Serial.readBytes(&cCrc[0], 2)==2) &&(millis()<iStrtTi)){
+          if ( millis()<iStrtTi ) {
+            uint16_t iMyCRC =0;
+            for (int iL=0; iL < iBlkSize; iL++){
+              iMyCRC= uicalcCrc(ucBuffer[iL],iMyCRC);
+            } /* end for */
+            uint16_t iCRC = (cCrc[0]<<8) + cCrc[1]; // big endian
+            // if(iMyCRC == iCRC) {            
+            // } else { 
+            //   // Serial.write((uint8_t)NAK);
+            //   #ifdef DEBUG
+            //   Serial1.print("\nMyCRC 0x");
+            //   Serial1.print(iMyCRC, HEX);
+            //   Serial1.print("\nRxCRC 0x");
+            //   Serial1.print(iCRC, HEX);
+            //   Serial1.print("\n>");
+            //   #endif
+            // } /* end if */
+            if ((bFNBlk) && (iBlkCnt == 0)) {
+              if (strlen(sLine)>1) {
+                bFNBlk = false;
+                if (SD.exists(sLine)){ // remove if file exists 
+                  SD.remove(sLine);
+                } /* end if */
+                FH1 = SD.open(sLine, (O_WRITE|O_CREAT)); // create file
+                Serial.write((uint8_t)ACK);
+                Serial.write("C");  // YModem: reopen connection after Filename
+              } else {  // no filename - exit function
+                Serial.write((uint8_t)ACK);
+                bRecEnd= true;
+              } /* end if */
+            } else {
+              FH1.write(ucBuffer, iBlkSize);
+              iByteCnt = iByteCnt + iBlkSize;
+              Serial.write((uint8_t)ACK);
+            } /* end if */
+            iRecState = YCHKEOT; //  
+          }  /* end if */
+        } else {
+          iRecState =94;
+        } /* end if */
+      } else
+      if (iRecState == YCHKEOT) { 
+        iStrtTi= millis()+Y_TIOUT;
+        while ( (!Serial.available()) && (millis() < iStrtTi) ) { }
+        if ((Serial.readBytes(&inChar,1)==1) &&(millis()<iStrtTi)) {
+          if ((inChar== STX) && (millis()<iStrtTi)) {
+            iBlkSize= Y_BSIZE;
+            iRecState = YBLKNUM; // get next data block in 1k-CRC mode
+          } else
+          if ((inChar== SOH) && (millis()<iStrtTi)) {
+            iBlkSize= X_BSIZE;
+            iRecState = YBLKNUM; // get next data block in 128 Byte- CRC mode
+          } else
+          if ((inChar== EOT) && (millis()<iStrtTi)) {
+            if (strlen(sLine)>1) {
+              FH1.close();  // close file handle
+              Serial.write((uint8_t)NAK);
+              delay(5);
+              Serial.write((uint8_t)ACK);
+              delay(5);
+              Serial.write("C");
+              iStrtTi= millis()+1000;
+              while ( (!Serial.available()) && (millis() < iStrtTi) ) { }
+              if ((Serial.readBytes(&inChar,1)==1) &&(millis()<iStrtTi)) {
+                if ((inChar== SOH) && (millis()<iStrtTi)) { // start of header
+                  iBlkSize= X_BSIZE;
+                  iByteSum = iByteSum + iByteCnt;
+                  iByteCnt = 0;
+                  bFNBlk = true;
+                  iRecState= YBLKNUM;  // get next file
+                } else {
+                  iByteSum = iByteSum + iByteCnt;
+                  bRecEnd= true;
+                } /* end if */
+              } /* end if */
+            } else {
+              FH1.close();  // close file handle
+              iByteSum = iByteSum + iByteCnt;
+              Serial.write((uint8_t)ACK);
+              delay(5);
+              bRecEnd= true;
+            } /* end if */
+          } /* end if */
+        } else {
+          iRecState = 95;
+        } /* end if */
+      } else
+      if (iRecState >= 90) {  // something goes wrong
+        for (int iL= 1; iL<3; iL++){
+          Serial.write((uint8_t)CAN);
+        } /* end for */
+        bRecEnd= true;
       } /* end if */
-    } else
-    if (iRecState >= 90) {  // something goes wrong
-      for (int iL= 1; iL<3; iL++){
-        Serial.write((uint8_t)CAN);
-      }
-      bRecEnd= true;
+    } /* end while */
+    if (iRecState == YCHKEOT) {
+      Serial.print("\nByte Cnt ");
+      Serial.print(iByteSum);
+      Serial.println("\nDone");
+    } else {
+      Serial.print("\nBlock Cnt ");
+      Serial.print(iBlkCnt);
+      Serial.print(" stoped at state ");
+      Serial.print(iRecState);
+      Serial.print("\nByte Cnt ");
+      Serial.print(iByteSum);
     } /* end if */
-  } /* end while */
-  if (iRecState == 5) {
-    Serial.print("\nByte Cnt ");
-    Serial.print(iByteSum);
-    Serial.println("\nDone");
-  } else {
-    Serial.print("\nstoped at state ");
-    Serial.print(iRecState);
-    Serial.print("\nByte Cnt ");
-    Serial.print(iByteSum);
-  } /* end if */
-  // Serial.flush();
-  SD.end();
-  digitalWrite(PIN_LED,0);
+    // Serial.flush();
+    SD.end();
+    digitalWrite(PIN_LED,0);
   }
   return( eYREC );
 }  /* end of fnc_YREC */
