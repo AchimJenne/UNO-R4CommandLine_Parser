@@ -18,7 +18,7 @@
 #define X_BLOCK_SIZE  128
 #define X_TIMEOUT 5000
 #define X_RETRANS 10
-// #define DEBUG
+ #define DEBUG
 // #define CHKCRC
 
 #define C_BS  0x08
