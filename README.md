@@ -8,7 +8,15 @@ An UNO-R4 minima with SD-Card, Battery bufferd RTC, BME680 and 20x4 LCD on the I
 The software supports the CPU internal RTC function and 4ticks/sec callback function for real-time applications. 
 In an equal form there is a 100 Hz GPT- Timer running with own callback.
 
-The X/Y-Modem Filetransfer is helpful if you want to exchange files on a running System - whenever you can't remove the SD-Card. In my case, the host-software can handle the files via remote control. The X/Y-Modem transfer performance is not high, but 25-60 kBytes/s is OK in my Application.
+**Old-School X/Y-Modem File Transfer**
+Most of the Terminal emulations supports X- and Y-Modem File transfer. I think, sometime it's helpful to transfer files to/from the uC without stopping the full uC environment or removing the SD-Card from the uC.
+
+From uC to host: The XModem transfer in 128Byte/Checksum and 1kB/CRC was implemented. YModem is not implemented. Reason: each file must be defined on the commandline - same like XModem. 
+Transfer rate: In the 128Byte-Transfermode the transfer rate is more then 20kByte/s and up to 70kByte/s in CRC-Mode.
+
+The YModem transfer from host to uC reached transfer rates 23-60 kByte/s in my tests. The XModem transfer rate is 6-10 kByte/s in 128Byte mode and 20-50 kByte/s in 1k-CRC.
+(I don't know why the YModem transfer is as faster as the same XModem 1k-CRC transfer)
+The Filetransfer was tested with Tera-Term ((C) 1994-2021 T. Teranishi,TeraTerm Project)
   
 **CD**, **MD**, **RD** - directory handling
 
